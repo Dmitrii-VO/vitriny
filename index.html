@@ -319,7 +319,7 @@ $("#feed").addEventListener("scroll", e => {
 }, true);
 
 // ---------- старт ----------
-fetch("feed.json").then(r => r.json()).then(d => {
+fetch("feed.json", { cache: "no-cache" }).then(r => r.json()).then(d => {
   data = d; items = d.items;
   // из поста в канале приходим с start_param = i<id>: эту вещь показываем первой
   const sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) || new URLSearchParams(location.search).get("item") || "";
