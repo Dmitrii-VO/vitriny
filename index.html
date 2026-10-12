@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>ВИТРИНЫ</title>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 :root {
   --bg: #ffffff; --fg: #111111; --muted: #8c8c8c; --line: #ececec; --chip: #f3f3f3;
@@ -113,10 +112,26 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   <div class="top"><div class="logo">ВИТРИНЫ</div><div id="count"></div></div>
   <div id="chips"></div>
 </header>
-<main id="feed"></main>
+<main id="feed"><div class="empty">Загрузка…</div></main>
 <div id="sheet"><div class="bg"></div><div class="body"><h3></h3><div class="opts"></div></div></div>
 
 <script>
+// любая ошибка — текстом на экране, а не белый лист: по скриншоту сразу видно, что сломалось
+const showError = msg => { document.getElementById("feed").innerHTML =
+  `<div class="empty">Не удалось открыть ленту<small style="padding:0 24px;text-align:center">${String(msg).replace(/</g, "&lt;")}</small><button onclick="location.reload()">Обновить</button></div>`; };
+window.onerror = (m, src, line) => showError(m + " (" + line + ")");
+window.onunhandledrejection = e => showError(e.reason && e.reason.message || e.reason);
+// скрипт Telegram грузим сами, не в <head>: если telegram.org тормозит, страница не висит белой,
+// а через 4 с лента открывается и без него (как в обычном браузере)
+let started = false;
+function start() { if (started) return; started = true; main(); }
+const tgScript = document.createElement("script");
+tgScript.src = "https://telegram.org/js/telegram-web-app.js";
+tgScript.onload = tgScript.onerror = start;
+document.head.appendChild(tgScript);
+setTimeout(start, 4000);
+
+function main() {
 // вне Telegram (в обычном браузере) скрипт тоже грузится, но initData пустой — тогда работаем без него
 const tg = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData ? Telegram.WebApp : null;
 const IMG = "https://avatars.mds.yandex.net/get-mpic/";
@@ -140,12 +155,15 @@ const haptic = (kind, arg) => { try { tg.HapticFeedback[kind](arg); } catch (e) 
 // избранное хранится в Telegram у каждого пользователя; вне Telegram — в браузере
 const store = {
   get: cb => tg && tg.CloudStorage && tg.isVersionAtLeast("6.9")
-    ? tg.CloudStorage.getItem("favs", (e, v) => cb(v || ""))
+    ? once(cb, f => { tg.CloudStorage.getItem("favs", (e, v) => f(v || "")); setTimeout(() => f(""), 1500); })
     : cb((() => { try { return localStorage.getItem("favs") || ""; } catch (e) { return ""; } })()),
   set: v => tg && tg.CloudStorage && tg.isVersionAtLeast("6.9")
     ? tg.CloudStorage.setItem("favs", v)
     : (() => { try { localStorage.setItem("favs", v); } catch (e) {} })(),
 };
+
+// cb вызовется ровно один раз: либо ответ CloudStorage, либо таймаут — лента не должна зависнуть без избранного
+function once(cb, run) { let done = false; run(v => { if (!done) { done = true; cb(v); } }); }
 
 // ---------- фильтры ----------
 const matches = (it, skip) =>
@@ -333,6 +351,7 @@ fetch("feed.json", { cache: "no-cache" }).then(r => r.json()).then(d => {
   if (first > 0) items.unshift(items.splice(first, 1)[0]);
   store.get(v => { favs = new Set(v.split(",").filter(Boolean)); refresh(); });
 });
+}
 </script>
 </body>
 </html>
