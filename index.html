@@ -98,6 +98,14 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 #sheet .grid .opt:first-child { grid-column: 1 / -1; }
 #sheet .grid .opt.on { border-color: var(--fg); }
 #sheet .grid .opt span { font-size: 11px; }
+#sheet .opts.checkout { padding: 0; }
+.ord { display: flex; gap: 14px; align-items: center; padding: 2px 16px 18px; }
+.ord img { flex: none; width: 72px; height: 96px; object-fit: contain; border-radius: 10px; background: var(--photo); }
+.ord .oname { font-size: 15px; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ord .ometa { margin-top: 6px; font-size: 14px; color: var(--muted); }
+.ord .ometa b { color: var(--fg); font-size: 16px; }
+.send { display: block; width: calc(100% - 32px); margin: 0 16px; }
+.note { color: var(--muted); font-size: 12px; text-align: center; padding: 10px 24px 16px; }
 </style>
 </head>
 <body>
@@ -168,7 +176,7 @@ function openSheet(k) {
   for (const it of items) if (matches(it, k)) for (const v of it.f[k]) counts[v] = (counts[v] || 0) + 1;
   const opts = data.order[k].filter(v => counts[v]);
   $("#sheet h3").textContent = FACETS[k];
-  $("#sheet .opts").classList.toggle("grid", k === "size");  // размеры — плитками, как в магазинах
+  $("#sheet .opts").className = k === "size" ? "opts grid" : "opts";  // размеры — плитками, как в магазинах
   $("#sheet .opts").innerHTML =
     `<button class="opt ${flt[k] ? "" : "on"}" data-v="">Любой</button>` +
     opts.map(v => `<button class="opt ${flt[k] === v ? "on" : ""}" data-v="${esc(v)}">${esc(v)}<span>${counts[v]}</span></button>`).join("");
@@ -248,10 +256,30 @@ function order(c) {
     const s = c.querySelector(".sizes"); s.classList.remove("shake"); void s.offsetWidth; s.classList.add("shake");
     return haptic("notificationOccurred", "warning");
   }
-  const size = it.s.length ? `, размер ${it.s[i]}` : "";
-  const link = `https://t.me/${data.bot}?start=o${it.id}_${it.s.length ? i : -1}`;
-  const go = () => tg ? tg.openTelegramLink(link) : location.href = link;
-  tg ? tg.showConfirm(`Заказать «${it.n}»${size} за ${rub(it.p)}?\nМенеджер напишет вам в Telegram.`, ok => ok && go()) : go();
+  // своя шторка вместо системного showConfirm: с фото, размером и ценой, в стиле ленты
+  const off = it.o && it.o > it.p;
+  $("#sheet h3").textContent = "Оформить заявку";
+  const box = $("#sheet .opts");
+  box.className = "opts checkout";
+  box.innerHTML = `<div class="ord">
+      <img src="${IMG + it.ph[0]}/600x800" alt="">
+      <div>
+        <div class="brand">${esc(it.b)}</div>
+        <div class="oname">${esc(it.n)}</div>
+        <div class="ometa">${it.s.length ? `Размер ${esc(it.s[i])} · ` : ""}<b>${rub(it.p)}</b>${off ? ` <s>${rub(it.o)}</s>` : ""}</div>
+      </div>
+    </div>
+    <button class="order send">Отправить заявку</button>
+    <div class="note">Менеджер напишет вам в Telegram и подтвердит наличие и доставку</div>`;
+  box.onclick = e => {
+    if (!e.target.closest(".send")) return;
+    haptic("notificationOccurred", "success");
+    closeSheet();
+    const link = `https://t.me/${data.bot}?start=o${it.id}_${it.s.length ? i : -1}`;
+    tg ? tg.openTelegramLink(link) : location.href = link;
+  };
+  $("#sheet").classList.add("open");
+  tg && tg.BackButton.show();
 }
 
 $("#feed").addEventListener("click", e => {
