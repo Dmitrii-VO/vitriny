@@ -93,6 +93,11 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 #sheet .opt { display: flex; width: 100%; justify-content: space-between; padding: 13px 8px; border-bottom: 1px solid var(--line); text-align: left; }
 #sheet .opt span { color: var(--muted); }
 #sheet .opt.on { font-weight: 600; }
+#sheet .opts.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 0 16px 16px; }
+#sheet .grid .opt { flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; border: 1px solid var(--line); border-radius: 10px; text-align: center; }
+#sheet .grid .opt:first-child { grid-column: 1 / -1; }
+#sheet .grid .opt.on { border-color: var(--fg); }
+#sheet .grid .opt span { font-size: 11px; }
 </style>
 </head>
 <body>
@@ -163,6 +168,7 @@ function openSheet(k) {
   for (const it of items) if (matches(it, k)) for (const v of it.f[k]) counts[v] = (counts[v] || 0) + 1;
   const opts = data.order[k].filter(v => counts[v]);
   $("#sheet h3").textContent = FACETS[k];
+  $("#sheet .opts").classList.toggle("grid", k === "size");  // размеры — плитками, как в магазинах
   $("#sheet .opts").innerHTML =
     `<button class="opt ${flt[k] ? "" : "on"}" data-v="">Любой</button>` +
     opts.map(v => `<button class="opt ${flt[k] === v ? "on" : ""}" data-v="${esc(v)}">${esc(v)}<span>${counts[v]}</span></button>`).join("");
