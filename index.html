@@ -321,6 +321,11 @@ $("#feed").addEventListener("scroll", e => {
 // ---------- старт ----------
 fetch("feed.json", { cache: "no-cache" }).then(r => r.json()).then(d => {
   data = d; items = d.items;
+  // каждый раз новая подборка: перемешиваем (Фишер — Йетс), вещь из поста канала потом встанет первой
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
   // из поста в канале приходим с start_param = i<id>: эту вещь показываем первой
   const sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) || new URLSearchParams(location.search).get("item") || "";
   const id = sp.replace(/^i/, "");
