@@ -188,8 +188,8 @@ tg && tg.BackButton.onClick(closeSheet);
 // ---------- карточки ----------
 function card(it, i, total) {
   const off = it.o && it.o > it.p ? Math.round((1 - it.p / it.o) * 100) : 0;
-  const photos = it.ph.map((p, j) =>
-    `<img src="${IMG + p}/600x800" alt="" loading="${i < 2 && j === 0 ? "eager" : "lazy"}" decoding="async">`).join("");
+  // фото грузит observer, когда вещь подходит к экрану: так и галерея вбок готова заранее, и 1000+ фото не качаются разом
+  const photos = it.ph.map(p => `<img data-src="${IMG + p}/600x800" alt="" decoding="async">`).join("");
   const sizes = it.s.length
     ? `<div class="sizes">${it.s.map((s, j) => `<button class="size" data-i="${j}">${esc(s)}</button>`).join("")}</div>`
     : `<div class="one">Один размер</div>`;
@@ -222,7 +222,14 @@ function refresh() {
     ? list.map((it, i) => card(it, i, list.length)).join("")
     : `<div class="empty">Ничего не нашлось<button data-reset>Сбросить фильтры</button></div>`;
   $("#feed").scrollTop = 0;
+  document.querySelectorAll(".card").forEach(c => io.observe(c));
 }
+
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  e.target.querySelectorAll("img[data-src]").forEach(img => { img.src = img.dataset.src; img.removeAttribute("data-src"); });
+  io.unobserve(e.target);
+}), { root: $("#feed"), rootMargin: "100% 0px" });  // текущая вещь и следующая
 
 const byId = id => items.find(it => it.id === id);
 
@@ -288,7 +295,8 @@ fetch("feed.json").then(r => r.json()).then(d => {
   data = d; items = d.items;
   // из поста в канале приходим с start_param = i<id>: эту вещь показываем первой
   const sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) || new URLSearchParams(location.search).get("item") || "";
-  const first = items.findIndex(it => "i" + it.id === sp || it.id === sp);
+  const id = sp.replace(/^i/, "");
+  const first = items.findIndex(it => it.id === id || it.a.includes(id));
   if (first > 0) items.unshift(items.splice(first, 1)[0]);
   store.get(v => { favs = new Set(v.split(",").filter(Boolean)); refresh(); });
 });
