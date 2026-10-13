@@ -25,7 +25,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   border-bottom: 1px solid var(--line); padding: 10px 0 0; }
 .top { display: flex; align-items: baseline; justify-content: space-between; padding: 0 16px; }
 .logo { font-weight: 700; letter-spacing: .28em; font-size: 15px; }
-#chips { display: flex; gap: 8px; overflow-x: auto; padding: 12px 16px 12px; scrollbar-width: none; }
+#chips { display: flex; gap: 8px; overflow-x: auto; padding: 12px 16px 12px; scrollbar-width: none; user-select: none; }
 #chips::-webkit-scrollbar { display: none; }
 .chip { flex: none; height: 34px; padding: 0 14px; border-radius: 17px; background: var(--chip);
   font-size: 14px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
@@ -338,6 +338,32 @@ $("#feed").addEventListener("scroll", e => {
   const n = Math.round(p.scrollLeft / p.clientWidth);
   p.parentNode.querySelectorAll(".dots i").forEach((d, j) => d.classList.toggle("on", j === n));
 }, true);
+
+// на компьютере полос прокрутки нет: ленты вбок (фильтры, фото, размеры) тянем мышью, фильтры ещё и колесом
+const HSCROLL = "#chips, .photos, .sizes";
+$("#chips").addEventListener("wheel", e => {
+  if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { e.currentTarget.scrollLeft += e.deltaY; e.preventDefault(); }
+}, { passive: false });
+let drag = null;
+document.addEventListener("pointerdown", e => {
+  const el = e.pointerType === "mouse" && e.target.closest(HSCROLL);
+  if (el && el.scrollWidth > el.clientWidth) drag = { el, x: e.clientX, left: el.scrollLeft, moved: false };
+});
+document.addEventListener("pointermove", e => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x;
+  if (!drag.moved && Math.abs(dx) > 5) { drag.moved = true; drag.el.style.scrollSnapType = "none"; }
+  if (drag.moved) drag.el.scrollLeft = drag.left - dx;
+});
+document.addEventListener("pointerup", () => {
+  if (!drag || !drag.moved) return drag = null;
+  const el = drag.el; drag = null;
+  el.style.scrollSnapType = "";
+  if (el.matches(".photos")) el.scrollTo({ left: Math.round(el.scrollLeft / el.clientWidth) * el.clientWidth, behavior: "smooth" });
+  // протащили — это не нажатие: глотаем клик, который браузер пошлёт следом
+  const eat = ev => ev.stopPropagation();
+  addEventListener("click", eat, true); setTimeout(() => removeEventListener("click", eat, true));
+});
 
 // ---------- старт ----------
 fetch("feed.json", { cache: "no-cache" }).then(r => r.json()).then(d => {
