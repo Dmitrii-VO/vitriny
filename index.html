@@ -25,7 +25,6 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   border-bottom: 1px solid var(--line); padding: 10px 0 0; }
 .top { display: flex; align-items: baseline; justify-content: space-between; padding: 0 16px; }
 .logo { font-weight: 700; letter-spacing: .28em; font-size: 15px; }
-#count { color: var(--muted); font-size: 12px; }
 #chips { display: flex; gap: 8px; overflow-x: auto; padding: 12px 16px 12px; scrollbar-width: none; }
 #chips::-webkit-scrollbar { display: none; }
 .chip { flex: none; height: 34px; padding: 0 14px; border-radius: 17px; background: var(--chip);
@@ -46,8 +45,6 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .dots { position: absolute; left: 0; right: 0; bottom: 12px; display: flex; justify-content: center; gap: 5px; pointer-events: none; }
 .dots i { width: 6px; height: 6px; border-radius: 3px; background: #111; opacity: .2; transition: all .2s; }
 .dots i.on { opacity: .8; width: 16px; }
-.pos { position: absolute; top: 12px; right: 12px; font-size: 12px; color: #111; background: rgba(255,255,255,.8);
-  padding: 3px 8px; border-radius: 10px; }
 .badge { position: absolute; top: 12px; left: 12px; font-size: 12px; font-weight: 600; color: #fff;
   background: var(--sale); padding: 3px 8px; border-radius: 10px; }
 .burst { position: absolute; left: 50%; top: 50%; font-size: 96px; color: #fff; pointer-events: none;
@@ -109,7 +106,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </head>
 <body>
 <header id="bar">
-  <div class="top"><div class="logo">ВИТРИНЫ</div><div id="count"></div></div>
+  <div class="top"><div class="logo">ВИТРИНЫ</div></div>
   <div id="chips"></div>
 </header>
 <main id="feed"><div class="empty">Загрузка…</div></main>
@@ -197,7 +194,7 @@ function openSheet(k) {
   $("#sheet .opts").className = k === "size" ? "opts grid" : "opts";  // размеры — плитками, как в магазинах
   $("#sheet .opts").innerHTML =
     `<button class="opt ${flt[k] ? "" : "on"}" data-v="">Любой</button>` +
-    opts.map(v => `<button class="opt ${flt[k] === v ? "on" : ""}" data-v="${esc(v)}">${esc(v)}<span>${counts[v]}</span></button>`).join("");
+    opts.map(v => `<button class="opt ${flt[k] === v ? "on" : ""}" data-v="${esc(v)}">${esc(v)}</button>`).join("");
   $("#sheet .opts").onclick = e => {
     const o = e.target.closest(".opt"); if (!o) return;
     haptic("selectionChanged");
@@ -212,7 +209,7 @@ $("#sheet .bg").onclick = closeSheet;
 tg && tg.BackButton.onClick(closeSheet);
 
 // ---------- карточки ----------
-function card(it, i, total) {
+function card(it) {
   const off = it.o && it.o > it.p ? Math.round((1 - it.p / it.o) * 100) : 0;
   // фото грузит observer, когда вещь подходит к экрану: так и галерея вбок готова заранее, и 1000+ фото не качаются разом
   const photos = it.ph.map(p => `<img data-src="${IMG + p}/600x800" alt="" decoding="async">`).join("");
@@ -224,7 +221,6 @@ function card(it, i, total) {
       <div class="photos">${photos}</div>
       ${it.ph.length > 1 ? `<div class="dots">${it.ph.map((_, j) => `<i class="${j ? "" : "on"}"></i>`).join("")}</div>` : ""}
       ${off ? `<div class="badge">−${off}%</div>` : ""}
-      <div class="pos">${i + 1} / ${total}</div>
       <div class="burst">♥</div>
     </div>
     <div class="info">
@@ -244,7 +240,6 @@ let list = [], shown = 0;
 function refresh() {
   renderChips();
   list = items.filter(it => matches(it)); shown = 0;
-  $("#count").textContent = list.length + " шт.";
   $("#feed").innerHTML = list.length ? "" : `<div class="empty">Ничего не нашлось<button data-reset>Сбросить фильтры</button></div>`;
   $("#feed").scrollTop = 0;
   more();
@@ -253,7 +248,7 @@ function refresh() {
 // карточки дорисовываем порциями по мере листания: 256 карточек с галереями разом роняли браузер на iPhone
 function more() {
   const next = list.slice(shown, shown + 10);
-  $("#feed").insertAdjacentHTML("beforeend", next.map((it, j) => card(it, shown + j, list.length)).join(""));
+  $("#feed").insertAdjacentHTML("beforeend", next.map(card).join(""));
   shown += next.length;
   [...$("#feed").querySelectorAll(".card")].slice(-next.length).forEach(c => io.observe(c));
 }
