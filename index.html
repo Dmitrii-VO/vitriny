@@ -51,8 +51,8 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .badge { position: absolute; top: 12px; left: 12px; font-size: 12px; font-weight: 600; color: #fff;
   background: var(--sale); padding: 3px 8px; border-radius: 10px; }
 .burst { position: absolute; left: 50%; top: 50%; font-size: 96px; color: #fff; pointer-events: none;
-  transform: translate(-50%,-50%) scale(0); filter: drop-shadow(0 4px 16px rgba(0,0,0,.35)); }
-.burst.go { animation: burst .7s ease-out; }
+  transform: translate(-50%,-50%) scale(0); }
+.burst.go { animation: burst .7s ease-out; filter: drop-shadow(0 4px 16px rgba(0,0,0,.35)); }  /* тень только на время анимации: фильтр на каждой карточке — лишний слой на iOS */
 @keyframes burst { 0% { transform: translate(-50%,-50%) scale(0); opacity: 1 }
   25% { transform: translate(-50%,-50%) scale(1.15); opacity: 1 } 100% { transform: translate(-50%,-50%) scale(1); opacity: 0 } }
 
@@ -240,21 +240,29 @@ function card(it, i, total) {
   </section>`;
 }
 
+let list = [], shown = 0;
 function refresh() {
   renderChips();
-  const list = items.filter(it => matches(it));
+  list = items.filter(it => matches(it)); shown = 0;
   $("#count").textContent = list.length + " шт.";
-  $("#feed").innerHTML = list.length
-    ? list.map((it, i) => card(it, i, list.length)).join("")
-    : `<div class="empty">Ничего не нашлось<button data-reset>Сбросить фильтры</button></div>`;
+  $("#feed").innerHTML = list.length ? "" : `<div class="empty">Ничего не нашлось<button data-reset>Сбросить фильтры</button></div>`;
   $("#feed").scrollTop = 0;
-  document.querySelectorAll(".card").forEach(c => io.observe(c));
+  more();
+}
+
+// карточки дорисовываем порциями по мере листания: 256 карточек с галереями разом роняли браузер на iPhone
+function more() {
+  const next = list.slice(shown, shown + 10);
+  $("#feed").insertAdjacentHTML("beforeend", next.map((it, j) => card(it, shown + j, list.length)).join(""));
+  shown += next.length;
+  [...$("#feed").querySelectorAll(".card")].slice(-next.length).forEach(c => io.observe(c));
 }
 
 const io = new IntersectionObserver(es => es.forEach(e => {
   if (!e.isIntersecting) return;
   e.target.querySelectorAll("img[data-src]").forEach(img => { img.src = img.dataset.src; img.removeAttribute("data-src"); });
   io.unobserve(e.target);
+  if (e.target === $("#feed").lastElementChild && shown < list.length) more();  // подходим к концу — следующая порция
 }), { root: $("#feed"), rootMargin: "100% 0px" });  // текущая вещь и следующая
 
 const byId = id => items.find(it => it.id === id);
